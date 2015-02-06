@@ -3,10 +3,10 @@ var util = require('util');
 
 var defConfig = {
     name: 'postgres',
-    pwd: 'mypassword',
+    pwd: 'pwd',
     port: 5432,
     server: 'localhost',
-    dbname: 'testdb'
+    dbname: 'test'
 };
 function pgLib(config) {
     if(this instanceof pgLib) {
@@ -69,7 +69,7 @@ pgLib.prototype = {
     *   where: 条件(内部提供查询分析另提供接口)
     * }
     **/
-    query: function(table, obj) {
+    query: function(table, obj, cb) {
       if(!table || !obj || !(obj instanceof Object)) {
           throw(new Error('params error'));
       }
@@ -84,9 +84,13 @@ pgLib.prototype = {
                   throw(err);
               }
           });
+          var rows = [];
           query.on('row', function(row) {
-             console.log(row);
+             rows.push(row);
           });
+          query.on('end', function() {
+             cb && cb(rows);
+          })
       } else {
           throw(new Error('client not connection'));
       }
@@ -106,13 +110,26 @@ pgLib.prototype = {
             throw(new Error('client not connection'));
         }
     },
-    update: function(table, id, obj) {
+    update: function(table, id, obj, where) {
         if(!table || !id || !obj || !(obj instanceof Object)) {
             throw(new Error('params error'));
         }
         if(!this.client) {
           throw(new Error('client not connection'));
         }
+        var setParams = [];
+        for(var i in obj) {
+          if(obj[i] !== undefined && obj.hasOwnProperty(i)) {
+              setParams.push(i + '=\'' + obj[i] + '\'');
+          }
+        }
+        var str = 'UPDATE ' + table + ' SET ' + setParams.join(',') + ' WHERE id=' + id;
+        console.log(str)
+        this.client.query(str, function(err) {
+            if(err) {
+                throw(err);
+            }
+        })
         
     },
     close: function() {
